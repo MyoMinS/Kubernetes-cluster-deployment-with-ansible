@@ -1,3 +1,3 @@
 # Kubernetes-cluster-deployment-with-ansible
 
-![work flow diagram](images/Ansbile for Kubernetes cluster deployment.jpg)
+![work flow diagram](images/file.jpg)
