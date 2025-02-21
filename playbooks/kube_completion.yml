@@ -1,0 +1,25 @@
+---
+- name: Setup kubectl bash completion
+  hosts: master
+  become: true
+  tasks:
+    - name: Ensure .bash_profile exists
+      ansible.builtin.file:
+        path: /home/ubuntu/.bash_profile
+        state: touch
+        owner: ubuntu
+        mode: "0644"
+
+    - name: Write kubectl completion to a file
+      ansible.builtin.copy:
+        content: "{{ lookup('pipe', 'kubectl completion bash') }}"
+        dest: /home/ubuntu/.kube/completion.bash.inc
+        owner: ubuntu
+        mode: '0644'
+
+    - name: Add kubectl completion to .bash_profile
+      ansible.builtin.lineinfile:
+        path: /home/ubuntu/.bash_profile
+        line: |
+          source /home/ubuntu/.kube/completion.bash.inc
+        state: present

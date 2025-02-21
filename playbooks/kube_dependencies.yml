@@ -1,0 +1,139 @@
+---
+- name: Kubernetes Dependencies
+  hosts: all
+  become: true
+  tasks:
+    - name: Updates
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install APT Transport HTTPS
+      ansible.builtin.apt:
+        name: apt-transport-https
+        state: present
+
+    - name: Set a hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Install containerd
+      ansible.builtin.apt:
+        name: containerd
+        state: present
+
+    - name: Create containerd directory
+      ansible.builtin.file:
+        path: /etc/containerd
+        state: directory
+        mode: "0755"
+
+    - name: Create an empty file for containerd configuration
+      ansible.builtin.copy:
+        content: ""
+        dest: /etc/containerd/config.toml
+        force: false
+        mode: "0755"
+
+    - name: Add containerd configuration
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          false | cat
+          containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Configuring Systemd cgroup driver for containerd
+      ansible.builtin.lineinfile:
+        path: /etc/containerd/config.toml
+        regexp: '            SystemdCgroup = false'
+        line: '            SystemdCgroup = true'
+
+    - name: Enable the containerd service and start service
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+        enabled: true
+        daemon_reload: true
+
+    - name: Download Kubernetes APT repository key
+      ansible.builtin.get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+        dest: /tmp/Release.key
+        mode: "0644"
+
+    - name: Convert the key to gpg format
+      ansible.builtin.command:
+        cmd: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/Release.key
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Add Kubernetes APT repository
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          false | cat
+          echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Update Packages
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Kubelet,Kubeadm,Kubelet
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      with_items:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Hold Kubelet,Kubeadm,Kubelet
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      with_items:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Disable SWAP
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+
+    - name: Disable SWAP in fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    - name: Load kernel module
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: Create an empty file for K8S sysctl parameters
+      ansible.builtin.copy:
+        content: ""
+        dest: /etc/sysctl.d/k8s.conf
+        force: false
+        mode: "0755"
+
+    - name: Configure sysctl params for Kubernetes
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.d/k8s.conf
+        line: "{{ item }}"
+      with_items:
+        - "net.bridge.bridge-nf-call-iptables  = 1"
+        - "net.ipv4.ip_forward                 = 1"
+        - "net.bridge.bridge-nf-call-ip6tables = 1"
+
+    - name: Reload sysctl
+      ansible.builtin.command: sudo sysctl --system
+      changed_when: false

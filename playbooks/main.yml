@@ -1,0 +1,9 @@
+---
+- name: Kubernetes Dependencies
+  import_playbook: kube_dependencies.yml
+- name: Kubeadm master Configuration
+  import_playbook: kube_master.yml
+- name: Join Worker Nodes
+  import_playbook: kube_workers.yml
+- name: Setup kubectl bash completion
+  import_playbook: kube_completion.yml

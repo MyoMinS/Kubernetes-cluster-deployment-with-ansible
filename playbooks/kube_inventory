@@ -1,0 +1,12 @@
+[master]
+master ansible_host=13.215.205.178
+
+[workers]
+worker1 ansible_host=52.77.235.18
+worker2 ansible_host=18.142.181.190
+worker3 ansible_host=54.169.202.82
+
+[all:vars]
+ansible_ssh_extra_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_ssh_private_key_file= ansible.pem
+ansible_user= ubuntu
