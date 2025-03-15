@@ -12,5 +12,5 @@ resource "aws_instance" "ec2_kubernetes_cluster" {
     "Env" = "Kubernetes"
     "Name" = "Kubernetes_Cluster"
   }
-  count = 4
+  count = 2
 }

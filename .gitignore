@@ -25,4 +25,4 @@ TestResults.xml
 #ansible key file
 ansible.pem
 #ignore inventory file
-kube_inventory
+*kube_inventory*
